@@ -21,7 +21,8 @@ def extract_features(audio_data):
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
     spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
     # Concatenate all features
-    features = np.concatenate([np.mean(mfccs, axis=1), np.mean(chroma, axis=1), np.mean(spectral_contrast, axis=1)])
+    features = np.concatenate([np.mean(mfccs, axis=1), np.mean(
+        chroma, axis=1), np.mean(spectral_contrast, axis=1)])
     return features
 
 
@@ -49,34 +50,14 @@ def upload_file():
         predicted_class = pipeline.predict(new_features)[0]
 
         predicted_gender = "male" if predicted_class == 0 else "female"
-        confidence_scores = {'Male': predictions_proba[0], 'Female': predictions_proba[1]}
+        confidence_scores = {
+            'Male': predictions_proba[0], 'Female': predictions_proba[1]}
 
         # Return prediction and confidence scores
         return jsonify({'predictedGender': predicted_gender, 'confidenceScores': confidence_scores}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
