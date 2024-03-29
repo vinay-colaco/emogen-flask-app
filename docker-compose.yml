@@ -1,0 +1,12 @@
+version: '3'
+services:
+  flask-backend:
+    container_name: 'flask-app'
+    image: flask-emogen:0.0.0
+    build:
+      context: ./Server/Dockerfile
+      dockerfile: Dockerfile
+    ports:
+      - 0.0.0.0:5000:5000
+    volumes:
+      - ./Server:/app/
