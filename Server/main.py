@@ -1,12 +1,19 @@
-import pickle
 import os
-import numpy as np
+import time
+import click
+import pickle
+import logging
 import librosa
-from flask import Flask, request, jsonify
+import numpy as np
 from flask_cors import CORS
+from datetime import datetime
+from flask import Flask, request, jsonify
+
+
 
 app = Flask(__name__)
 CORS(app)
+
 
 # Load the saved model
 with open('./model/final_full_gender.pkl', 'rb') as file:
@@ -96,6 +103,7 @@ def upload_file():
     file.save(file_path)
 
     try:
+        request_time = time.time()
         # Predict gender
         gender_prediction = predict_gender(file_path)
 
@@ -108,7 +116,9 @@ def upload_file():
             'genderPrediction': gender_prediction,
             'emotionPrediction': emotion_prediction
         }
-
+        response_time = time.time()
+        total_time = response_time - request_time
+        app.logger.info(f"Time taken to process the request and send the response: {total_time:.2f} seconds")
         return jsonify(combined_response), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
