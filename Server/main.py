@@ -5,6 +5,9 @@ import pickle
 import logging
 import librosa
 import numpy as np
+
+import emailServer
+from threading import Thread
 from flask_cors import CORS
 from datetime import datetime
 from flask import Flask, request, jsonify
@@ -49,7 +52,7 @@ def predict_gender(file_path):
         predictions_proba = pipeline.predict_proba(new_features)[0]
         predicted_class = pipeline.predict(new_features)[0]
 
-        predicted_gender = "male" if predicted_class == 0 else "female"
+        predicted_gender = "Male" if predicted_class == 0 else "Female"
         confidence_scores = {'Male': float(predictions_proba[0]), 'Female': float(predictions_proba[1])}
 
         # Return prediction and confidence scores as dictionary
@@ -81,7 +84,6 @@ def predict_emotion(file_path):
         return "Error processing the audio file.", 0.0  
         
 
-
 @app.route('/')
 def ping():
     return "Server is Fine"
@@ -103,12 +105,20 @@ def upload_file():
     file.save(file_path)
 
     try:
+
+
         request_time = time.time()
+        request_arrival_time = datetime.now().strftime("%m/%d/%Y %I:%M %p")
+
+        request_time = time.time()
+
         # Predict gender
         gender_prediction = predict_gender(file_path)
-
+        gender_response_time = time.time()
         # Predict emotion
+        emotion_request_time = time.time()
         emotion, confidence = predict_emotion(file_path)
+        emotion_response_time = time.time()
         emotion_prediction = {'predictedEmotion': emotion, 'confidenceScore': confidence}
 
         # Combine responses
@@ -117,8 +127,28 @@ def upload_file():
             'emotionPrediction': emotion_prediction
         }
         response_time = time.time()
+
+
+        total_time = response_time - request_time
+        gender_total_response_time = gender_response_time - request_time
+        emotion_total_response_time = emotion_response_time - emotion_request_time
+
+        app.logger.info(f"Time taken to process the request and send the response: {total_time:.2f} seconds")
+        app.logger.info(f"Time taken to process the request and send the response: {gender_total_response_time:.2f} seconds")
+        app.logger.info(f"Time taken to process the request and send the response: {emotion_total_response_time:.2f} seconds")
+        
+        # mail part
+        file_name = file.filename
+        gender = gender_prediction[0]['predictedGender']
+        response_sent_time = datetime.now().strftime("%m/%d/%Y %I:%M %p")
+
+        email_thread = Thread(target=emailServer.email_service, args=(file_name, emotion, gender, request_arrival_time, response_sent_time, emotion_total_response_time, gender_total_response_time))
+        email_thread.start()
+
+
         total_time = response_time - request_time
         app.logger.info(f"Time taken to process the request and send the response: {total_time:.2f} seconds")
+
         return jsonify(combined_response), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
