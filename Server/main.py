@@ -5,6 +5,7 @@ import pickle
 import logging
 import librosa
 import numpy as np
+
 import emailServer
 from threading import Thread
 from flask_cors import CORS
@@ -105,8 +106,12 @@ def upload_file():
 
     try:
 
+
         request_time = time.time()
         request_arrival_time = datetime.now().strftime("%m/%d/%Y %I:%M %p")
+
+        request_time = time.time()
+
         # Predict gender
         gender_prediction = predict_gender(file_path)
         gender_response_time = time.time()
@@ -123,6 +128,7 @@ def upload_file():
         }
         response_time = time.time()
 
+
         total_time = response_time - request_time
         gender_total_response_time = gender_response_time - request_time
         emotion_total_response_time = emotion_response_time - emotion_request_time
@@ -138,6 +144,10 @@ def upload_file():
 
         email_thread = Thread(target=emailServer.email_service, args=(file_name, emotion, gender, request_arrival_time, response_sent_time, emotion_total_response_time, gender_total_response_time))
         email_thread.start()
+
+
+        total_time = response_time - request_time
+        app.logger.info(f"Time taken to process the request and send the response: {total_time:.2f} seconds")
 
         return jsonify(combined_response), 200
     except Exception as e:
