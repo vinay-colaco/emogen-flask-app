@@ -5,13 +5,12 @@ import pickle
 import logging
 import librosa
 import numpy as np
-
 import emailServer
 from threading import Thread
 from flask_cors import CORS
 from datetime import datetime
 from flask import Flask, request, jsonify
-
+from tensorflow.keras.models import load_model
 
 
 app = Flask(__name__)
@@ -23,8 +22,10 @@ with open('./model/final_full_gender.pkl', 'rb') as file:
     pipeline = pickle.load(file)
 
 # Load the emotion prediction model
-with open('./model/fourClass.pkl', 'rb') as file:
-    emotion_model = pickle.load(file)
+# emotion_model = load_model('./model/fourclass.h5')
+# with open('./model/fourClass.pkl', 'rb') as file:
+#     emotion_model = pickle.load(file)
+emotion_model = load_model('./model/threeclass1.h5')
 
 UPLOAD_FOLDER = './uploads'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -59,29 +60,63 @@ def predict_gender(file_path):
         return {'predictedGender': predicted_gender, 'confidenceScores': confidence_scores}, 200
     except Exception as e:
         return {'error': str(e)}, 500
+    
+# For using fourclass.pkl/.h5 model
+# def emotion_extract_features(file_path):
+#     try:
+#         audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast')
+#         mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
+#         mfccs_processed = np.mean(mfccs.T, axis=0)
+#     except Exception as e:
+#         print("Error encountered while parsing file: ", file_path)
+#         return None
+#     return mfccs_processed
 
+# def predict_emotion(file_path):
+#     features = emotion_extract_features(file_path)
+#     if features is not None:
+#         features = np.reshape(features, (1, 1, -1))
+#         prediction = emotion_model.predict(features)
+#         confidence_scores = np.max(prediction, axis=1).astype(float)  # Convert to float
+#         labels = ['High Valence-High Arousal', 'High Valence-Low Arousal', 'Low Valence-High Arousal', 'Low Valence-Low Arousal']
+#         predicted_emotion = labels[np.argmax(prediction)]
+#         return predicted_emotion, confidence_scores[0]
+#     else:
+#         return "Error processing the audio files.", 500  
+
+# For ThreeClass emotion mdoel
 def emotion_extract_features(file_path):
     try:
         audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast')
         mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
-        mfccs_processed = np.mean(mfccs.T, axis=0)
+        chroma = librosa.feature.chroma_stft(y=audio, sr=sample_rate)
+        mel = librosa.feature.melspectrogram(y=audio, sr=sample_rate)
+        contrast = librosa.feature.spectral_contrast(y=audio, sr=sample_rate)
+        features = np.hstack((np.mean(mfccs, axis=1), np.mean(chroma, axis=1), 
+                              np.mean(mel, axis=1), np.mean(contrast, axis=1)))
+        # Pad features if necessary to match expected input shape (187 dimensions)
+        if len(features) < 187:
+            features = np.pad(features, ((0, 187 - len(features))), mode='constant')
     except Exception as e:
         print("Error encountered while parsing file: ", file_path)
-        return None
-    return mfccs_processed
+        return None 
+    return features
 
 def predict_emotion(file_path):
-    features = emotion_extract_features(file_path)
-
+    # Extract features
+    features =emotion_extract_features(file_path)
     if features is not None:
-        features = np.reshape(features, (1, 1, -1))
+        features = np.expand_dims(features, axis=0)  
+        features = np.expand_dims(features, axis=0)  
         prediction = emotion_model.predict(features)
-        confidence_scores = np.max(prediction, axis=1).astype(float)  # Convert to float
-        labels = ['High Valence-High Arousal', 'High Valence-Low Arousal', 'Low Valence-High Arousal', 'Low Valence-Low Arousal']
+        confidence_scores = np.max(prediction, axis=1).astype(float)
+        labels = ['Happy', 'Neutral', 'Sad']
         predicted_emotion = labels[np.argmax(prediction)]
+        
         return predicted_emotion, confidence_scores[0]
     else:
-        return "Error processing the audio file.", 0.0  
+        return "Error processing the audio file.", 500
+
         
 
 @app.route('/')
@@ -126,6 +161,7 @@ def upload_file():
             'genderPrediction': gender_prediction,
             'emotionPrediction': emotion_prediction
         }
+        
         response_time = time.time()
 
 

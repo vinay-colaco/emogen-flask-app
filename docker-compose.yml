@@ -10,3 +10,13 @@ services:
       - 0.0.0.0:5000:5000
     volumes:
       - ./Server:/app/
+  react-frontend:
+    container_name: 'vite-react-app'
+    image: react-emogen:0.0.0
+    build:
+      context: ./Client/
+      dockerfile: Dockerfile
+    ports:
+      - 0.0.0.0:5173:5173
+    volumes:
+      - ./Client/emogen:/app/

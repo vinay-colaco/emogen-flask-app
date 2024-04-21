@@ -231,10 +231,6 @@ def email_body(file_name, predicted_emotion, predicted_gender, request_arrived, 
                 </tr>
             </table>
         </div>
-            <div class="print">
-            <center><button onclick="myFunction()">Print Report</button></center>
-        </div>
-
     </body>
 </html>
 """
